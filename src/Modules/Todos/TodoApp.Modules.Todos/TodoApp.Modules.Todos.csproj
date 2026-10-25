@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Shared\TodoApp.Shared.Infrastructure\TodoApp.Shared.Infrastructure.csproj" />
+    <ProjectReference Include="..\TodoApp.Modules.Todos.Contracts\TodoApp.Modules.Todos.Contracts.csproj" />
+    <!-- Only the Contracts of another module, never its implementation. -->
+    <ProjectReference Include="..\..\Users\TodoApp.Modules.Users.Contracts\TodoApp.Modules.Users.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>

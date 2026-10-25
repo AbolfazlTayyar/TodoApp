@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!--
+    The composition root. It is the ONLY project that references module implementations,
+    and it contains no business logic: it just wires the modules together and runs them.
+  -->
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Shared\TodoApp.Shared.Infrastructure\TodoApp.Shared.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\Users\TodoApp.Modules.Users\TodoApp.Modules.Users.csproj" />
+    <ProjectReference Include="..\..\Modules\Todos\TodoApp.Modules.Todos\TodoApp.Modules.Todos.csproj" />
+    <ProjectReference Include="..\..\Modules\Notifications\TodoApp.Modules.Notifications\TodoApp.Modules.Notifications.csproj" />
+  </ItemGroup>
+
+</Project>

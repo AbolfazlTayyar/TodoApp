@@ -1,0 +1,111 @@
+# Works with the VS Code "REST Client" extension, Rider and Visual Studio.
+# Run the requests from top to bottom. Use port 8080 when running with Docker.
+@baseUrl = http://localhost:5080
+@email = alice@example.com
+@password = Passw0rd!
+
+### Register
+POST {{baseUrl}}/api/users/register
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "displayName": "Alice",
+  "password": "{{password}}"
+}
+
+### Log in
+# @name login
+POST {{baseUrl}}/api/users/login
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}"
+}
+
+###
+@token = {{login.response.body.$.accessToken}}
+
+### Who am I?
+GET {{baseUrl}}/api/users/me
+Authorization: Bearer {{token}}
+
+### My lists (the "Inbox" was created by the Todos module reacting to UserRegistered)
+# @name lists
+GET {{baseUrl}}/api/todo-lists
+Authorization: Bearer {{token}}
+
+###
+@inboxId = {{lists.response.body.$[0].id}}
+
+### Create a list
+POST {{baseUrl}}/api/todo-lists
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "name": "Groceries" }
+
+### Create an item in the Inbox
+# @name createItem
+POST {{baseUrl}}/api/todo-items
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "listId": "{{inboxId}}",
+  "title": "Learn modular monoliths",
+  "description": "Read the README, then the code",
+  "priority": "High",
+  "dueDateUtc": "2026-12-31T17:00:00Z"
+}
+
+###
+@itemId = {{createItem.response.body.$.id}}
+
+### Get one item
+GET {{baseUrl}}/api/todo-items/{{itemId}}
+Authorization: Bearer {{token}}
+
+### Page through items (filters are optional)
+GET {{baseUrl}}/api/todo-items?listId={{inboxId}}&isCompleted=false&page=1&pageSize=20
+Authorization: Bearer {{token}}
+
+### Update an item
+PUT {{baseUrl}}/api/todo-items/{{itemId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "Learn modular monoliths properly",
+  "description": null,
+  "priority": "Medium",
+  "dueDateUtc": null
+}
+
+### Complete it (publishes TodoItemCompleted, which Notifications handles)
+POST {{baseUrl}}/api/todo-items/{{itemId}}/complete
+Authorization: Bearer {{token}}
+
+### Completing it again returns 409 Conflict
+POST {{baseUrl}}/api/todo-items/{{itemId}}/complete
+Authorization: Bearer {{token}}
+
+### Reopen it
+POST {{baseUrl}}/api/todo-items/{{itemId}}/reopen
+Authorization: Bearer {{token}}
+
+### My notifications ("Welcome!" and "Task completed")
+GET {{baseUrl}}/api/notifications?unreadOnly=true
+Authorization: Bearer {{token}}
+
+### Delete the item
+DELETE {{baseUrl}}/api/todo-items/{{itemId}}
+Authorization: Bearer {{token}}
+
+### Deleting the default list returns 409 Conflict
+DELETE {{baseUrl}}/api/todo-lists/{{inboxId}}
+Authorization: Bearer {{token}}
+
+### Health check (anonymous)
+GET {{baseUrl}}/health

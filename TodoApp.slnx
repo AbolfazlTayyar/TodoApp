@@ -1,0 +1,22 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/Bootstrapper/">
+    <Project Path="src/Bootstrapper/TodoApp.Api/TodoApp.Api.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/" />
+  <Folder Name="/src/Modules/Notifications/">
+    <Project Path="src/Modules/Notifications/TodoApp.Modules.Notifications/TodoApp.Modules.Notifications.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Todos/">
+    <Project Path="src/Modules/Todos/TodoApp.Modules.Todos.Contracts/TodoApp.Modules.Todos.Contracts.csproj" />
+    <Project Path="src/Modules/Todos/TodoApp.Modules.Todos/TodoApp.Modules.Todos.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Users/">
+    <Project Path="src/Modules/Users/TodoApp.Modules.Users.Contracts/TodoApp.Modules.Users.Contracts.csproj" />
+    <Project Path="src/Modules/Users/TodoApp.Modules.Users/TodoApp.Modules.Users.csproj" />
+  </Folder>
+  <Folder Name="/src/Shared/">
+    <Project Path="src/Shared/TodoApp.Shared.Abstractions/TodoApp.Shared.Abstractions.csproj" />
+    <Project Path="src/Shared/TodoApp.Shared.Infrastructure/TodoApp.Shared.Infrastructure.csproj" />
+  </Folder>
+</Solution>

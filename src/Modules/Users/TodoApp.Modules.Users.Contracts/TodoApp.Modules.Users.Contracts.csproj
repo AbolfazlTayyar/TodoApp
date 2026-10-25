@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The public face of the Users module: the only project other modules may reference.
+    Keep it small and stable. Changing it is a breaking change for every consumer.
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Shared\TodoApp.Shared.Abstractions\TodoApp.Shared.Abstractions.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The shared kernel. Pure C#, no ASP.NET Core or EF Core dependency.
+    Contracts projects reference only this, which keeps them lightweight.
+  -->
+
+</Project>

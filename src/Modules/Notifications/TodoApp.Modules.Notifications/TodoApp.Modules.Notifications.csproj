@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- No Contracts project yet: nothing depends on Notifications. Add one when something needs to. -->
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Shared\TodoApp.Shared.Infrastructure\TodoApp.Shared.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Users\TodoApp.Modules.Users.Contracts\TodoApp.Modules.Users.Contracts.csproj" />
+    <ProjectReference Include="..\..\Todos\TodoApp.Modules.Todos.Contracts\TodoApp.Modules.Todos.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>
