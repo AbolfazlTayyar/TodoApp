@@ -131,11 +131,14 @@ TodoApp.Modules.Todos/
 ```
 TodoApp (SQL Server database)
 ├── users.Users                       ← only UsersDbContext maps these
+├── users.OutboxMessages              ← each module's own outbox (events it publishes)
 ├── users.__EFMigrationsHistory
 ├── todos.TodoLists                   ← only TodosDbContext
 ├── todos.TodoItems
+├── todos.OutboxMessages
 ├── todos.__EFMigrationsHistory
 ├── notifications.Notifications       ← only NotificationsDbContext
+├── notifications.OutboxMessages
 └── notifications.__EFMigrationsHistory
 ```
 
@@ -192,6 +195,13 @@ Look at:
 - `Shared.Infrastructure/Events/IntegrationEventDispatcher.cs`: runs each handler **in its own DI scope**,
   so one failing module can't break another
 - `Todos/IntegrationEvents/UserRegisteredIntegrationEventHandler.cs`: an **idempotent** handler
+
+**Delivery guarantees.** An event is stored if and only if the change that caused it was committed, so none are
+lost to a crash. Delivery is *at least once*: a failed handler is retried with backoff, and a retry runs every
+handler of that event again, which is why handlers must be idempotent. Events are not ordered across modules.
+After 8 failed attempts a message stays in its `OutboxMessages` table (with the `Error`) for you to inspect.
+Each module has its own table, so the module's data and its events always live in the same schema and the same
+transaction, and moving a module to its own database needs no change here.
 
 ### Synchronous: module APIs (when you need data *now*)
 
@@ -292,9 +302,12 @@ Handlers are registered automatically (`AddHandlersFromAssembly`).
 ### Add a new module
 
 1. Create `src/Modules/Tags/TodoApp.Modules.Tags` (+ `.Contracts` if others need it).
-2. Add a `TagsModule : IModule` class and a `TagsDbContext` with `public const string Schema = "tags";`
-   and `modelBuilder.HasDefaultSchema(Schema)`. Register it with `AddModuleDbContext<TagsDbContext>(configuration, TagsDbContext.Schema)`.
-3. Generate its first migration (see above). It creates the `tags` schema in the shared database.
+2. Add a `TagsModule : IModule` class and a `TagsDbContext : ModuleDbContext` with `public const string Schema = "tags";`.
+   In `OnModelCreating`, call `base.OnModelCreating(modelBuilder)` (it maps the module's outbox) and then
+   `modelBuilder.HasDefaultSchema(Schema)`. Register it with `AddModuleDbContext<TagsDbContext>(configuration, TagsDbContext.Schema)`;
+   that also hooks its outbox into the shared `OutboxProcessor`. To publish an event, call
+   `dbContext.AddIntegrationEvent(...)` before `SaveChangesAsync`.
+3. Generate its first migration (see above). It creates the `tags` schema, its tables and `tags.OutboxMessages`.
 4. Reference it from `TodoApp.Api` and add `new TagsModule()` to the array in `Program.cs`.
 5. Add its `.csproj` to the restore layer in the `Dockerfile`.
 
@@ -325,7 +338,7 @@ Handlers are registered automatically (`AddHandlersFromAssembly`).
 
 1. `Program.cs`: how modules are composed
 2. `UsersModule.cs` → `Api/UsersController.cs` → `Application/RegisterUser/RegisterUserCommand.cs`: one request end to end
-3. `Shared.Infrastructure/Events/*`: how the event reaches other modules
+3. `Shared.Infrastructure/Database/ModuleDbContext.cs`, `Outbox/*` and `Events/*`: how the event is stored and then reaches other modules
 4. `Todos/IntegrationEvents/*` and `Notifications/IntegrationEvents/*`: the reactions
 5. `Todos/Domain/TodoItem.cs`: a rich domain model
 6. `Shared.Infrastructure/Api/ApiControllerBase.cs`: how `Result` becomes HTTP
