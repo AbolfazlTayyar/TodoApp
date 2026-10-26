@@ -5,18 +5,16 @@ using TodoApp.Shared.Infrastructure.Database;
 
 namespace TodoApp.Modules.Todos.Infrastructure.Database;
 
-internal sealed class TodosDbContext(DbContextOptions<TodosDbContext> options) : DbContext(options)
+internal sealed class TodosDbContext(DbContextOptions<TodosDbContext> options) : ModuleDbContext(options)
 {
     public const string Schema = "todos";
 
     public DbSet<TodoList> TodoLists => Set<TodoList>();
     public DbSet<TodoItem> TodoItems => Set<TodoItem>();
 
-    protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder) =>
-        configurationBuilder.UseUtcDateTimes();
-
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        base.OnModelCreating(modelBuilder);
         modelBuilder.HasDefaultSchema(Schema);
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(TodosDbContext).Assembly);
     }

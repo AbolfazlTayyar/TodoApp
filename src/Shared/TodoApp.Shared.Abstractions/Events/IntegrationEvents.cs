@@ -17,17 +17,11 @@ public abstract record IntegrationEvent : IIntegrationEvent
 }
 
 /// <summary>
-/// Handlers must be idempotent: a message bus delivers events "at least once",
-/// so the same event can arrive twice.
+/// Handlers must be idempotent: events are delivered "at least once" (the outbox retries failed deliveries,
+/// and re-runs every handler of an event when one of them fails), so the same event can arrive twice.
 /// </summary>
 public interface IIntegrationEventHandler<in TEvent>
     where TEvent : IIntegrationEvent
 {
     Task HandleAsync(TEvent integrationEvent, CancellationToken cancellationToken);
-}
-
-public interface IEventBus
-{
-    Task PublishAsync<TEvent>(TEvent integrationEvent, CancellationToken cancellationToken = default)
-        where TEvent : IIntegrationEvent;
 }

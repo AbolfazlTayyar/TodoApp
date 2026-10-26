@@ -3,7 +3,6 @@ using TodoApp.Modules.Users.Application.Abstractions;
 using TodoApp.Modules.Users.Contracts;
 using TodoApp.Modules.Users.Domain;
 using TodoApp.Modules.Users.Infrastructure.Database;
-using TodoApp.Shared.Abstractions.Events;
 using TodoApp.Shared.Abstractions.Messaging;
 using TodoApp.Shared.Abstractions.Results;
 
@@ -14,7 +13,6 @@ internal sealed record RegisterUserCommand(string Email, string DisplayName, str
 internal sealed class RegisterUserCommandHandler(
     UsersDbContext dbContext,
     IPasswordHasher passwordHasher,
-    IEventBus eventBus,
     TimeProvider timeProvider) : ICommandHandler<RegisterUserCommand, Guid>
 {
     public async Task<Result<Guid>> HandleAsync(RegisterUserCommand command, CancellationToken cancellationToken)
@@ -40,12 +38,11 @@ internal sealed class RegisterUserCommandHandler(
 
         var user = result.Value;
         dbContext.Users.Add(user);
-        await dbContext.SaveChangesAsync(cancellationToken);
 
-        // Users doesn't know (or care) that Todos and Notifications react to this.
-        await eventBus.PublishAsync(
-            new UserRegisteredIntegrationEvent(user.Id, user.Email, user.DisplayName),
-            cancellationToken);
+        // Users doesn't know (or care) that Todos and Notifications react to this. The event goes into the
+        // outbox and is saved in the same transaction as the user, so one can never exist without the other.
+        dbContext.AddIntegrationEvent(new UserRegisteredIntegrationEvent(user.Id, user.Email, user.DisplayName));
+        await dbContext.SaveChangesAsync(cancellationToken);
 
         return user.Id;
     }

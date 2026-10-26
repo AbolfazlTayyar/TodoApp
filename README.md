@@ -68,7 +68,7 @@ TodoApp/
 │   │   └── TodoApp.Api                  ← Composition root. Wires modules together. No business logic.
 │   ├── Shared/
 │   │   ├── TodoApp.Shared.Abstractions  ← Shared kernel: Result, Error, ICommand, IIntegrationEvent... (pure C#)
-│   │   └── TodoApp.Shared.Infrastructure← Plumbing: event bus, JWT auth, DB setup, error handling, base controller
+│   │   └── TodoApp.Shared.Infrastructure← Plumbing: outbox, event dispatcher, JWT auth, DB setup, error handling, base controller
 │   └── Modules/
 │       ├── Users/
 │       │   ├── TodoApp.Modules.Users.Contracts   ← PUBLIC: events + IUsersModuleApi
@@ -172,9 +172,9 @@ give it its own connection string. Not a single query has to change.
 ```
 POST /api/users/register
    └─ Users: RegisterUserCommandHandler
-        ├─ save User
-        └─ publish UserRegisteredIntegrationEvent ──┐
-                                                    │   (in-memory channel → background dispatcher)
+        └─ save User + UserRegisteredIntegrationEvent (outbox row, ONE transaction)
+                                                    │
+                                                    │   (OutboxProcessor polls / is woken after the save)
               ┌─────────────────────────────────────┴───────────────────┐
               ▼                                                         ▼
    Todos: create default "Inbox" list               Notifications: welcome notification + email
@@ -184,9 +184,13 @@ The publisher doesn't know who is listening. You can add a fourth module that re
 `UserRegistered` without changing a single line in Users.
 
 Look at:
-- `Shared.Infrastructure/Events/InMemoryEventBus.cs`: publish = write to a `Channel<T>`
-- `Shared.Infrastructure/Events/IntegrationEventDispatcher.cs`: background service that runs each
-  handler **in its own DI scope**, so one failing module can't break another
+- `Shared.Infrastructure/Database/ModuleDbContext.cs`: `AddIntegrationEvent(...)` adds a row to the module's
+  own `OutboxMessages` table; `SaveChangesAsync` commits it together with the data
+- `Shared.Infrastructure/Outbox/OutboxProcessor.cs`: ONE background service that visits every module's outbox,
+  delivers due messages (retry with backoff, give up after 8 attempts) and cleans up old processed rows.
+  Several instances can run at once (`UPDLOCK, READPAST`)
+- `Shared.Infrastructure/Events/IntegrationEventDispatcher.cs`: runs each handler **in its own DI scope**,
+  so one failing module can't break another
 - `Todos/IntegrationEvents/UserRegisteredIntegrationEventHandler.cs`: an **idempotent** handler
 
 ### Synchronous: module APIs (when you need data *now*)
@@ -236,10 +240,11 @@ This sample stays small on purpose. Here is what changes as it grows, roughly in
 1. **Tests.** Unit tests for the domain (`TodoItem.Complete()` twice → error), integration tests with
    `WebApplicationFactory`, and **architecture tests** (NetArchTest / ArchUnitNET) that fail the build if
    `Todos` ever references `Users` internals. Architecture tests are what keep the boundaries clean over the years.
-2. **Outbox pattern.** Right now an event is published *after* `SaveChanges`. If the process crashes in between,
-   the event is lost. The outbox saves the event in the same transaction as the data, and a background job
-   publishes it. Pair it with an **inbox** table (processed event IDs) on the consumer side.
-3. **A real message broker** (RabbitMQ, Azure Service Bus, Kafka) behind `IEventBus`, often via MassTransit
+2. **Inbox pattern.** The outbox is already in place (events are saved in the same transaction as the data), but
+   delivery is *at least once*, and when one handler of an event fails, every handler of it runs again. Handlers
+   are idempotent by hand today; an **inbox** table (event ID + handler) on the consumer side would enforce it.
+3. **A real message broker** (RabbitMQ, Azure Service Bus, Kafka): the `OutboxProcessor` would publish to the
+   broker instead of calling `IntegrationEventDispatcher`, and consumers would read from it, often via MassTransit
    or Wolverine. You get retries, dead-letter queues, and the ability to run handlers on other machines.
 4. **Enforce schema ownership in the database too.** Give each module its own SQL login/user that only has
    permissions on its own schema (`GRANT ... ON SCHEMA::todos`). Then a cross-module query fails at runtime

@@ -5,17 +5,15 @@ using TodoApp.Shared.Infrastructure.Database;
 
 namespace TodoApp.Modules.Notifications.Infrastructure.Database;
 
-internal sealed class NotificationsDbContext(DbContextOptions<NotificationsDbContext> options) : DbContext(options)
+internal sealed class NotificationsDbContext(DbContextOptions<NotificationsDbContext> options) : ModuleDbContext(options)
 {
     public const string Schema = "notifications";
 
     public DbSet<Notification> Notifications => Set<Notification>();
 
-    protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder) =>
-        configurationBuilder.UseUtcDateTimes();
-
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        base.OnModelCreating(modelBuilder);
         modelBuilder.HasDefaultSchema(Schema);
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(NotificationsDbContext).Assembly);
     }

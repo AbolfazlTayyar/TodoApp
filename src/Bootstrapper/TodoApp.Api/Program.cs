@@ -32,6 +32,10 @@ foreach (var module in modules)
     mvc.AddApplicationPart(module.GetType().Assembly);
 }
 
+// After the modules: hosted services start in registration order, and the outbox processor
+// must start after every module's migrator has created its tables.
+builder.Services.AddOutboxProcessor();
+
 builder.Services.AddRouting(options => options.LowercaseUrls = true);
 builder.Services.AddOpenApi();
 builder.Services.AddHealthChecks();

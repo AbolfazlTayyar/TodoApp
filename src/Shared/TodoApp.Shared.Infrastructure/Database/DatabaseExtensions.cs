@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using TodoApp.Shared.Infrastructure.Outbox;
 
 namespace TodoApp.Shared.Infrastructure.Database;
 
@@ -19,7 +20,7 @@ public static class DatabaseExtensions
         this IServiceCollection services,
         IConfiguration configuration,
         string schema)
-        where TContext : DbContext
+        where TContext : ModuleDbContext
     {
         var connectionString = configuration.GetConnectionString(ConnectionStringName);
         if (string.IsNullOrWhiteSpace(connectionString))
@@ -27,14 +28,20 @@ public static class DatabaseExtensions
             throw new InvalidOperationException($"Connection string '{ConnectionStringName}' is not configured.");
         }
 
-        services.AddDbContext<TContext>(options => options.UseSqlServer(connectionString, sql => sql
-            // Each module keeps its migration history in its own schema, so modules migrate independently.
-            .MigrationsHistoryTable(HistoryRepository.DefaultTableName, schema)
-            // Retries transient errors (failover, Azure SQL throttling, a server still starting up).
-            // Note: explicit transactions then have to run inside Database.CreateExecutionStrategy().
-            .EnableRetryOnFailure()));
+        services.AddDbContext<TContext>((serviceProvider, options) => options
+            .UseSqlServer(connectionString, sql => sql
+                // Each module keeps its migration history in its own schema, so modules migrate independently.
+                .MigrationsHistoryTable(HistoryRepository.DefaultTableName, schema)
+                // Retries transient errors (failover, Azure SQL throttling, a server still starting up).
+                // Note: explicit transactions then have to run inside Database.CreateExecutionStrategy().
+                .EnableRetryOnFailure())
+            // Wakes the outbox processor after a save, so events are delivered without waiting for the next poll.
+            .AddInterceptors(serviceProvider.GetRequiredService<OutboxSignalInterceptor>()));
 
         services.AddHostedService<DatabaseMigrator<TContext>>();
+
+        // The module's outbox, visited by the one shared OutboxProcessor.
+        services.AddSingleton<IOutboxStore, OutboxStore<TContext>>();
 
         return services;
     }
